@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOEMA RNSGate Lite — автономный mesh-шлюз</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e14;--s1:#0f1419;--s2:#151c24;--bd:#1e2a35;
+  --teal:#14b8a6;--tx:#e2e8f0;--mu:#64748b;--am:#f59e0b;--gr:#22c55e;
+  --fn:'JetBrains Mono',monospace;--body:'Inter',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:var(--body);overflow-x:hidden;line-height:1.6}
+:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:2px}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 40px;background:rgba(10,14,20,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd)}
+.nav-logo{font-family:var(--fn);font-size:14px;font-weight:700;color:var(--tx)}
+.nav-logo span{color:var(--teal)}
+.nav-links{display:flex;gap:28px;list-style:none}
+.nav-links a{position:relative;font-size:13px;color:var(--mu);text-decoration:none;transition:color .2s;padding-bottom:3px}
+.nav-links a::after{content:"";position:absolute;left:0;right:100%;bottom:0;height:1px;background:var(--teal);transition:right .25s cubic-bezier(.4,0,.2,1)}
+.nav-links a:hover{color:var(--teal)}
+.nav-links a.active{color:var(--teal)}
+.nav-links a.active::after{right:0}
+.nav-cta{font-family:var(--fn);font-size:12px;font-weight:600;padding:8px 18px;background:transparent;border:1px solid var(--teal);border-radius:6px;color:var(--teal);cursor:pointer;text-decoration:none;transition:all .2s}
+.nav-cta:hover{background:rgba(20,184,166,.1)}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 24px 80px;position:relative;overflow:hidden;text-align:center}
+canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.35;pointer-events:none}
+
+.hero-eyebrow{font-family:var(--fn);font-size:11px;letter-spacing:.15em;color:var(--teal);text-transform:uppercase;margin-bottom:20px;position:relative}
+.hero-title{font-family:var(--fn);font-size:clamp(32px,6vw,64px);font-weight:700;line-height:1.1;margin-bottom:20px;position:relative}
+.hero-title .lite{color:var(--teal)}
+.hero-subtitle{font-size:clamp(15px,2vw,18px);font-weight:300;color:var(--mu);max-width:540px;margin:0 auto 36px;position:relative}
+.hero-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:44px;position:relative}
+.badge{font-family:var(--fn);font-size:11px;padding:4px 12px;border:1px solid var(--bd);border-radius:20px;color:var(--mu)}
+.badge.teal{border-color:rgba(20,184,166,.35);color:var(--teal)}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;position:relative}
+
+.btn-primary{font-family:var(--fn);font-size:13px;font-weight:600;padding:13px 28px;background:var(--teal);color:#000;border:none;border-radius:8px;cursor:pointer;text-decoration:none;transition:all .2s}
+.btn-primary:hover{background:#0d9488;transform:translateY(-1px)}
+.btn-secondary{font-family:var(--fn);font-size:13px;padding:13px 28px;background:transparent;border:1px solid var(--bd);color:var(--tx);border-radius:8px;cursor:pointer;text-decoration:none;transition:all .2s}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
+
+.terminal-wrap{width:100%;max-width:640px;margin:56px auto 0;background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;position:relative;text-align:left}
+.terminal-bar{display:flex;align-items:center;gap:6px;padding:12px 16px;background:var(--s2);border-bottom:1px solid var(--bd)}
+.dot{width:10px;height:10px;border-radius:50%}
+.dot.r{background:#ef4444}.dot.y{background:var(--am)}.dot.g{background:var(--gr)}
+.terminal-title{font-family:var(--fn);font-size:11px;color:var(--mu);margin-left:8px}
+.terminal-body{padding:18px 24px;font-family:var(--fn);font-size:12px;line-height:2}
+.t-mu{color:var(--mu)}.t-teal{color:var(--teal)}.t-am{color:var(--am)}.t-gr{color:var(--gr)}.t-tx{color:var(--tx)}
+
+section{padding:88px 24px}
+.container{max-width:1040px;margin:0 auto}
+.section-label{font-family:var(--fn);font-size:11px;letter-spacing:.15em;color:var(--teal);text-transform:uppercase;margin-bottom:12px}
+.section-title{font-size:clamp(24px,4vw,36px);font-weight:600;line-height:1.2;margin-bottom:16px}
+.section-body{font-size:15px;color:var(--mu);max-width:560px;line-height:1.7}
+
+.arch-block{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px 32px;font-family:var(--fn);font-size:13px;color:var(--teal);line-height:2.2;margin-top:32px;overflow-x:auto}
+
+.features{display:flex;flex-direction:column;margin-top:56px}
+.feat{
+  position:sticky;
+  top:calc(84px + var(--i,0) * 14px);
+  z-index:calc(var(--i,0) + 1);
+  display:flex;
+  align-items:flex-start;
+  gap:22px;
+  background:var(--s1);
+  border:1px solid var(--bd);
+  border-radius:16px;
+  padding:28px 32px;
+  margin-bottom:16px;
+  overflow:hidden;
+  box-shadow:0 10px 22px rgba(0,0,0,.3);
+  transition:border-color .2s;
+  will-change:transform;
+}
+.feat::before{content:"";position:absolute;inset:0;background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(20,184,166,.12),transparent 65%);opacity:0;transition:opacity .3s}
+.feat:hover{border-color:rgba(20,184,166,.3)}
+.feat:hover::before{opacity:1}
+.feat-icon{position:relative;flex-shrink:0;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--s2);border:1px solid var(--bd);border-radius:12px}
+.feat-text{position:relative;min-width:0}
+.feat-title{font-family:var(--fn);font-size:14px;font-weight:600;color:var(--tx);margin-bottom:6px}
+.feat-body{font-size:13px;color:var(--mu);line-height:1.65;max-width:640px}
+@media(max-width:640px){
+  .feat{flex-direction:column;gap:14px;top:calc(72px + var(--i,0) * 10px)}
+}
+
+.carousel{position:relative;margin-top:32px;border:1px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5);background:var(--s1)}
+.carousel-track{display:flex;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.carousel-slide{flex:0 0 100%;width:100%;position:relative}
+.carousel-slide img{width:100%;display:block;aspect-ratio:21/10;object-fit:contain;background:var(--s2)}
+.carousel-slide .ph{width:100%;aspect-ratio:21/10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:
+    repeating-linear-gradient(135deg,var(--s2) 0 12px,var(--s1) 12px 24px);
+  color:var(--mu);font-family:var(--fn);font-size:12px}
+.carousel-slide .ph b{color:var(--teal);font-size:13px;letter-spacing:.04em}
+.carousel-caption{font-family:var(--fn);font-size:12px;color:var(--mu);padding:14px 20px;border-top:1px solid var(--bd);background:var(--s1)}
+.carousel-caption b{color:var(--tx);font-weight:600}
+.carousel-arrow{position:absolute;top:calc(50% - 22px);transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:rgba(10,14,20,.65);border:1px solid var(--bd);color:var(--tx);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;backdrop-filter:blur(6px);transition:border-color .2s,color .2s}
+.carousel-arrow:hover{border-color:var(--teal);color:var(--teal)}
+.carousel-arrow.prev{left:14px}
+.carousel-arrow.next{right:14px}
+.carousel-dots{display:flex;justify-content:center;gap:8px;padding:16px 0}
+.carousel-dot{width:7px;height:7px;border-radius:50%;background:var(--bd);cursor:pointer;transition:background .2s,transform .2s;border:none;padding:0}
+.carousel-dot.active{background:var(--teal);transform:scale(1.4)}
+
+.inside-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:32px}
+.inside-item{position:relative;display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.inside-item::before{content:"";position:absolute;inset:0;background:radial-gradient(200px circle at var(--mx,50%) var(--my,50%),rgba(20,184,166,.10),transparent 65%);opacity:0;transition:opacity .3s}
+.inside-item:hover::before{opacity:1}
+.inside-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);margin-top:7px;flex-shrink:0;position:relative}
+.inside-label{font-family:var(--fn);font-size:12px;color:var(--tx);margin-bottom:2px;position:relative}
+.inside-desc{font-size:12px;color:var(--mu);position:relative}
+
+.get-card{max-width:460px;margin:44px auto 0;background:var(--s1);border:1px solid rgba(20,184,166,.3);border-radius:16px;padding:32px;text-align:left}
+.get-badge{display:inline-block;font-family:var(--fn);font-size:11px;color:var(--teal);border:1px solid rgba(20,184,166,.35);border-radius:20px;padding:4px 12px;margin-bottom:20px}
+.get-code{background:var(--bg);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:22px}
+.get-code-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--s2);border-bottom:1px solid var(--bd)}
+.get-code-bar span{font-family:var(--fn);font-size:10px;color:var(--mu);letter-spacing:.08em;text-transform:uppercase}
+.get-copy{font-family:var(--fn);font-size:10px;color:var(--mu);background:transparent;border:1px solid var(--bd);border-radius:5px;padding:3px 9px;cursor:pointer;transition:color .2s,border-color .2s}
+.get-copy:hover{color:var(--teal);border-color:var(--teal)}
+.get-code pre{margin:0;padding:16px;font-family:var(--fn);font-size:12px;line-height:1.8;color:var(--teal);white-space:pre-wrap;word-break:break-all}
+.get-list{list-style:none;margin-bottom:26px}
+.get-list li{font-size:13px;color:var(--mu);padding:7px 0;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+.get-list li::before{content:"✓";color:var(--teal);font-weight:700;font-family:var(--fn)}
+.get-note{font-size:12px;color:var(--mu);margin-top:14px;text-align:center}
+
+.contact-box{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:36px;margin-top:44px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.contact-desc{font-size:14px;color:var(--mu);max-width:400px}
+.contact-links{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.contact-link{font-family:var(--fn);font-size:13px;color:var(--teal);text-decoration:none;border:1px solid rgba(20,184,166,.3);padding:10px 20px;border-radius:8px;transition:background .2s}
+.contact-link:hover{background:rgba(20,184,166,.08)}
+
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--bd),transparent)}
+footer{border-top:1px solid var(--bd);padding:28px 24px;text-align:center;font-family:var(--fn);font-size:11px;color:var(--mu)}
+
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.4,0,.2,1),transform .7s cubic-bezier(.4,0,.2,1);transition-delay:calc(var(--i,0) * 70ms)}
+.reveal.in{opacity:1;transform:none}
+
+@media(hover:none){
+  .feat::before,.inside-item::before{display:none}
+}
+@media(prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1!important;transform:none!important;transition:none!important}
+  .nav-links a::after{transition:none}
+}
+
+@media(max-width:640px){
+  nav{padding:14px 20px}
+  .nav-links{display:none}
+  .inside-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">NOEMA <span>RNSGate</span> Lite</div>
+  <ul class="nav-links">
+    <li><a href="#features">Возможности</a></li>
+    <li><a href="#inside">Что внутри</a></li>
+    <li><a href="#get">Как получить</a></li>
+    <li><a href="#contact">Контакты</a></li>
+  </ul>
+  <a href="#get" class="nav-cta">Скачать →</a>
+</nav>
+
+<section class="hero">
+  <canvas id="c"></canvas>
+  <div class="hero-eyebrow">ПО для mesh-шлюза Reticulum</div>
+  <h1 class="hero-title">Передавай смысл,<br>а не просто данные.<br><span class="lite">Вне сети.</span></h1>
+  <p class="hero-subtitle">NOEMA RNSGate — mesh-шлюз, который передаёт зашифрованные сообщения через LoRa, I2P и TCP. Без облака. Без серверов. Без посредников.</p>
+  <div class="hero-badges">
+    <span class="badge teal">Бесплатно</span>
+    <span class="badge teal">LoRa · RNode</span>
+    <span class="badge teal">LXMF · Reticulum</span>
+    <span class="badge teal">Home Assistant MQTT</span>
+    <span class="badge">I2P</span>
+    <span class="badge">Nomadnet</span>
+  </div>
+  <div class="hero-actions">
+    <a href="#get" class="btn-primary">Скачать бесплатно</a>
+    <a href="#features" class="btn-secondary">Смотреть возможности</a>
+  </div>
+  <div class="terminal-wrap">
+    <div class="terminal-bar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <span class="terminal-title">noema_lxmf_bridge — active</span>
+    </div>
+    <div class="terminal-body">
+      <div><span class="t-mu">[RNS]  </span><span class="t-teal">Transport instance started</span></div>
+      <div><span class="t-mu">[RNS]  </span><span class="t-gr">Announce sent → 3 interfaces</span></div>
+      <div><span class="t-mu">[LXMF] </span><span class="t-tx">Message from &lt;3a7f…b2c1&gt;: "lights on"</span></div>
+      <div><span class="t-mu">[MQTT] </span><span class="t-am">→ topic: message/lxmf/receive</span></div>
+      <div><span class="t-mu">[HA]   </span><span class="t-gr">Automation triggered: lights.living on</span></div>
+      <div><span class="t-mu">[LXMF] </span><span class="t-teal">Reply sent → "Done! 💡"</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="features">
+  <div class="container reveal">
+    <div class="section-label">Возможности</div>
+    <h2 class="section-title">Всё в одном пакете</h2>
+    <p class="section-body">Построено на Reticulum Network Stack — сети, где криптография заложена с нуля, для медленных и ненадёжных каналов связи.</p>
+    <div class="features">
+      <div class="feat reveal"><div class="feat-icon">📡</div><div class="feat-text"><div class="feat-title">LoRa-сеть</div><div class="feat-body">Подключай RNode по USB или Wi-Fi. Дальняя зашифрованная радиосвязь — без инфраструктуры и без лицензии.</div></div></div>
+      <div class="feat reveal"><div class="feat-icon">🏠</div><div class="feat-text"><div class="feat-title">Мост в Home Assistant</div><div class="feat-body">Отправляй команды в HA по радиоканалу LoRa. Запускай автоматизации откуда угодно — даже полностью автономно.</div></div></div>
+      <div class="feat reveal"><div class="feat-icon">🔒</div><div class="feat-text"><div class="feat-title">Анонимная сеть I2P</div><div class="feat-body">Соединяй два шлюза анонимно, без публичного IP. Настройка туннеля — в один клик из дашборда.</div></div></div>
+      <div class="feat reveal"><div class="feat-icon">🌐</div><div class="feat-text"><div class="feat-title">Узел Nomadnet</div><div class="feat-body">Размещай страницы в сети Reticulum. Встроенный браузер, редактор страниц, Python-скрипты с планировщиком cron.</div></div></div>
+      <div class="feat reveal"><div class="feat-icon">⚙️</div><div class="feat-text"><div class="feat-title">Веб-дашборд</div><div class="feat-body">Полноценное управление на порту 8081. Сервисы, живые логи, редактор конфигов, обновления. Без SSH.</div></div></div>
+      <div class="feat reveal"><div class="feat-icon">🤖</div><div class="feat-text"><div class="feat-title">LXMF-бот</div><div class="feat-body">Встроенный бот с командами /ping, /status, /info. Расширяется — добавляй свои обработчики через MQTT.</div></div></div>
+    </div>
+    <div class="arch-block">
+<span style="color:var(--mu)">── Как это работает ──────────────────────────────────────</span>
+
+  Телефон ──BT──▶ RNode ──LoRa──▶  NOEMA RNSGate Lite  ──MQTT──▶ Home Assistant
+                                          │
+                                   I2P / TCP / LAN
+                                          │
+                                    Другой шлюз
+                                          │
+                                      Nomadnet
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="dashboard" style="padding:72px 24px">
+  <div class="container reveal">
+    <div class="section-label">Дашборд</div>
+    <h2 class="section-title">Полный контроль из браузера</h2>
+    <p class="section-body">Следи за сервисами, редактируй конфиги, смотри логи, наблюдай за живой картой mesh-сети — всё на порту 8081, в светлой или тёмной теме. Без SSH.</p>
+
+    <div class="carousel" id="dashCarousel">
+      <div class="carousel-track" id="carouselTrack">
+        <div class="carousel-slide" data-title="Services" data-sub="— живая архитектурная карта"><img src="screenshots/services.png" alt="Services — живая архитектурная карта" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Services&lt;/b&gt;&lt;span&gt;screenshots/services.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="Configs" data-sub="— редактируй конфиги RNS / LXMF / MQTT прямо в браузере"><img src="screenshots/configs.png" alt="Configs — редактируй конфиги RNS / LXMF / MQTT прямо в браузере" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Configs&lt;/b&gt;&lt;span&gt;screenshots/configs.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="Addresses" data-sub="— идентификаторы и адреса LXMF"><img src="screenshots/addresses.png" alt="Addresses — идентификаторы и адреса LXMF" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Addresses&lt;/b&gt;&lt;span&gt;screenshots/addresses.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="Monitor" data-sub="— трафик LXMF и интерфейсы RNS"><img src="screenshots/monitor.png" alt="Monitor — трафик LXMF и интерфейсы RNS" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Monitor&lt;/b&gt;&lt;span&gt;screenshots/monitor.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="RNode" data-sub="— статус LoRa-радио и графики трафика"><img src="screenshots/rnode.png" alt="RNode — статус LoRa-радио и графики трафика" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;RNode&lt;/b&gt;&lt;span&gt;screenshots/rnode.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="I2P" data-sub="— настройка анонимного туннеля"><img src="screenshots/i2p.png" alt="I2P — настройка анонимного туннеля" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;I2P&lt;/b&gt;&lt;span&gt;screenshots/i2p.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="Nomadnet" data-sub="— редактор страниц и браузер узлов"><img src="screenshots/nomadnet.png" alt="Nomadnet — редактор страниц и браузер узлов" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Nomadnet&lt;/b&gt;&lt;span&gt;screenshots/nomadnet.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="Chat" data-sub="— встроенный LXMF-мессенджер"><img src="screenshots/chat.png" alt="Chat — встроенный LXMF-мессенджер" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Chat&lt;/b&gt;&lt;span&gt;screenshots/chat.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="Logs" data-sub="— логи сервисов в реальном времени"><img src="screenshots/logs.png" alt="Logs — логи сервисов в реальном времени" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;Logs&lt;/b&gt;&lt;span&gt;screenshots/logs.png&lt;/span&gt;&lt;/div&gt;'"></div>
+        <div class="carousel-slide" data-title="System" data-sub="— бэкап, обновления, уведомления в Telegram"><img src="screenshots/system.png" alt="System — бэкап, обновления, уведомления в Telegram" onerror="this.outerHTML='&lt;div class=&quot;ph&quot;&gt;&lt;b&gt;System&lt;/b&gt;&lt;span&gt;screenshots/system.png&lt;/span&gt;&lt;/div&gt;'"></div>
+      </div>
+      <button class="carousel-arrow prev" onclick="carouselMove(-1)" aria-label="Предыдущий скриншот">‹</button>
+      <button class="carousel-arrow next" onclick="carouselMove(1)" aria-label="Следующий скриншот">›</button>
+      <div class="carousel-caption"><b id="carouselCaptionTitle">Services</b> <span id="carouselCaptionSub">— живая архитектурная карта</span></div>
+      <div class="carousel-dots" id="carouselDots"></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="inside">
+  <div class="container reveal">
+    <div class="section-label">Комплект</div>
+    <h2 class="section-title">Что внутри</h2>
+    <p class="section-body">Полный исходный код на GitHub — клонируй и запускай на любом устройстве с Debian/Ubuntu.</p>
+    <div class="inside-grid">
+      <div class="inside-item"><div class="inside-dot"></div><div><div class="inside-label">install.sh</div><div class="inside-desc">Установка в одну команду. Ставит зависимости, настраивает systemd-сервисы, спрашивает данные MQTT.</div></div></div>
+      <div class="inside-item"><div class="inside-dot"></div><div><div class="inside-label">Веб-дашборд</div><div class="inside-desc">Flask-интерфейс на порту 8081. Панели Services, Configs, Logs, Monitor, RNode, I2P, Nomadnet, System.</div></div></div>
+      <div class="inside-item"><div class="inside-dot"></div><div><div class="inside-label">LXMF Bridge бот</div><div class="inside-desc">noema_lxmf_bridge — мост LXMF ↔ MQTT со встроенными командами и полной интеграцией Home Assistant.</div></div></div>
+      <div class="inside-item"><div class="inside-dot"></div><div><div class="inside-label">Все сервисы настроены</div><div class="inside-desc">rnsd, noema_lxmf_bridge, i2pd, nomadnet, rbrowser — уже готовы как systemd-юниты.</div></div></div>
+      <div class="inside-item"><div class="inside-dot"></div><div><div class="inside-label">Полная документация</div><div class="inside-desc">README на русском и английском — установка, настройка, сценарии использования, решение проблем.</div></div></div>
+      <div class="inside-item"><div class="inside-dot"></div><div><div class="inside-label">Backup &amp; Restore</div><div class="inside-desc">Резервная копия всех конфигов, страниц, скриптов и ключей идентичности в один клик. Восстановление из дашборда.</div></div></div>
+    </div>
+    <div style="margin-top:20px;padding:14px 20px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;font-family:var(--fn);font-size:12px;color:var(--mu)">
+      <span style="color:var(--teal)">Требования: </span>Debian / Ubuntu · Python 3.10+ · root-доступ · x86_64 или ARM (Orange Pi, Raspberry Pi, мини-ПК…)
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="get">
+  <div class="container reveal" style="text-align:center">
+    <div class="section-label">Доступ</div>
+    <h2 class="section-title">Полностью бесплатно</h2>
+    <p class="section-body" style="margin:0 auto">Без подписки. Без сервера лицензий. Открытый исходный код — ставь на сколько угодно устройств.</p>
+    <div class="get-card">
+      <span class="get-badge">MIT · открытый код</span>
+      <div class="get-code">
+        <div class="get-code-bar">
+          <span>bash</span>
+          <button class="get-copy" onclick="copyInstallCmd(this)" type="button">Скопировать</button>
+        </div>
+        <pre id="installCmd">git clone https://github.com/e2ret/NOEMA-RNSGate-Lite.git
+cd NOEMA-RNSGate-Lite &amp;&amp; sudo bash install.sh</pre>
+      </div>
+      <ul class="get-list">
+        <li>Полный исходный код + скрипт установки</li>
+        <li>Веб-дашборд (все панели)</li>
+        <li>LXMF Bridge бот</li>
+        <li>Документация RU + EN</li>
+        <li>Обновления одной кнопкой из дашборда</li>
+        <li>Без облака, без телеметрии, без DRM</li>
+      </ul>
+      <a href="https://github.com/e2ret/NOEMA-RNSGate-Lite" class="btn-primary" style="display:block;text-align:center">Скачать на GitHub →</a>
+      <div class="get-note">MIT-лицензия · ставь на любое количество устройств</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="contact">
+  <div class="container reveal" style="text-align:center">
+    <div class="section-label">Сообщество</div>
+    <h2 class="section-title">Есть вопросы?</h2>
+    <div class="contact-box">
+      <p class="contact-desc">Нашёл баг, есть идея или просто хочешь обсудить mesh-сети — пиши.</p>
+      <div class="contact-links">
+        <a href="mailto:e2ret@tuta.io" class="contact-link">📧 e2ret@tuta.io</a>
+        <a href="https://t.me/reticulum_belgorod/70" class="contact-link" target="_blank" rel="noopener">💬 Telegram</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  NOEMA RNSGate Lite — построено на <a href="https://reticulum.network" style="color:var(--teal);text-decoration:none">Reticulum Network Stack</a> (Mark Qvist, MIT) ·
+  <span style="color:#334155">Распространяется как есть, без гарантий</span>
+  <br><br>
+  <span style="color:#1e2a35">Только для личного использования и исследований. Пользователь несёт ответственность за соблюдение местного законодательства о радиочастотах. Не предназначено для использования в юрисдикциях, где шифрованная mesh-радиосвязь требует специальной лицензии. Программное обеспечение не включает радиооборудование и само по себе ничего не передаёт.</span>
+</footer>
+
+<script>
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ambient mesh + mouse-reactive "ping" in the hero
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let meshNodes = [], W, H, mouse = null;
+function resize(){W=canvas.width=canvas.offsetWidth;H=canvas.height=canvas.offsetHeight;}
+function init(){meshNodes=[];const n=Math.floor(W*H/16000);for(let i=0;i<n;i++)meshNodes.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35});}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const d=150;
+  for(let i=0;i<meshNodes.length;i++){
+    const a=meshNodes[i];a.x+=a.vx;a.y+=a.vy;
+    if(a.x<0||a.x>W)a.vx*=-1;if(a.y<0||a.y>H)a.vy*=-1;
+    for(let j=i+1;j<meshNodes.length;j++){
+      const b=meshNodes[j],dx=a.x-b.x,dy=a.y-b.y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<d){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=`rgba(20,184,166,${(1-dist/d)*.5})`;ctx.lineWidth=.5;ctx.stroke();}
+    }
+    ctx.beginPath();ctx.arc(a.x,a.y,1.8,0,Math.PI*2);ctx.fillStyle='rgba(20,184,166,.8)';ctx.fill();
+  }
+  if(mouse){
+    const dm=180;
+    meshNodes.forEach(a=>{
+      const dx=a.x-mouse.x,dy=a.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<dm){
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(mouse.x,mouse.y);
+        ctx.strokeStyle=`rgba(245,158,11,${(1-dist/dm)*.6})`;ctx.lineWidth=.8;ctx.stroke();
+      }
+    });
+    ctx.beginPath();ctx.arc(mouse.x,mouse.y,3,0,Math.PI*2);
+    ctx.fillStyle='rgba(245,158,11,.9)';ctx.shadowColor='rgba(245,158,11,.8)';ctx.shadowBlur=9;ctx.fill();ctx.shadowBlur=0;
+  }
+  if(heroVisible) requestAnimationFrame(draw);
+}
+let heroVisible = true;
+if('IntersectionObserver' in window){
+  new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      const wasVisible = heroVisible;
+      heroVisible = entry.isIntersecting;
+      if(heroVisible && !wasVisible) requestAnimationFrame(draw);
+    });
+  }, {threshold:0}).observe(document.querySelector('.hero'));
+}
+window.addEventListener('resize',()=>{resize();init();});
+resize();init();draw();
+
+if(!reduceMotion){
+  const heroEl = document.querySelector('.hero');
+  heroEl.addEventListener('mousemove', e=>{
+    const r = canvas.getBoundingClientRect();
+    mouse = {x: e.clientX - r.left, y: e.clientY - r.top};
+  });
+  heroEl.addEventListener('mouseleave', ()=>{ mouse = null; });
+}
+
+// scroll-reveal
+if(!reduceMotion && 'IntersectionObserver' in window){
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){ entry.target.classList.add('in'); io.unobserve(entry.target); }
+    });
+  }, {threshold:.12, rootMargin:'0px 0px -60px 0px'});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+} else {
+  document.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));
+}
+
+// staggered reveal for grid children
+[...document.querySelectorAll('.features, .inside-grid')].forEach(grid=>{
+  [...grid.children].forEach((child,i)=>child.style.setProperty('--i', i));
+});
+
+// nav scrollspy
+(function(){
+  const links = [...document.querySelectorAll('.nav-links a')];
+  const map = new Map(links.map(a=>[a.getAttribute('href').slice(1), a]));
+  const targets = [...map.keys()].map(id=>document.getElementById(id)).filter(Boolean);
+  if(!targets.length || !('IntersectionObserver' in window)) return;
+  const spy = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      const link = map.get(entry.target.id);
+      if(!link) return;
+      if(entry.isIntersecting) links.forEach(a=>a.classList.remove('active')), link.classList.add('active');
+    });
+  }, {rootMargin:'-45% 0px -50% 0px', threshold:0});
+  targets.forEach(t=>spy.observe(t));
+})();
+
+// mouse-tracked glow on cards
+if(window.matchMedia('(hover:hover)').matches){
+  document.querySelectorAll('.feat, .inside-item').forEach(card=>{
+    card.addEventListener('mousemove', e=>{
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX-r.left)/r.width*100)+'%');
+      card.style.setProperty('--my', ((e.clientY-r.top)/r.height*100)+'%');
+    });
+  });
+}
+
+function fallbackCopy(text,cb){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); cb&&cb(); }catch(e){}
+  document.body.removeChild(ta);
+}
+function copyInstallCmd(btn){
+  const text = document.getElementById('installCmd').innerText;
+  const orig = btn.textContent;
+  const done = ()=>{ btn.textContent='Скопировано ✓'; setTimeout(()=>btn.textContent=orig,1600); };
+  if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done)); }
+  else fallbackCopy(text,done);
+}
+</script>
+
+<script>
+(function(){
+  const root = document.getElementById('dashCarousel');
+  if(!root) return;
+  const track = document.getElementById('carouselTrack');
+  const dotsWrap = document.getElementById('carouselDots');
+  const capTitle = document.getElementById('carouselCaptionTitle');
+  const capSub = document.getElementById('carouselCaptionSub');
+  const slides = [...track.children];
+  const meta = slides.map(s=>({ title: s.dataset.title || '', sub: s.dataset.sub || '' }));
+  let idx = 0, autoTimer = null;
+
+  slides.forEach((_,i)=>{
+    const d = document.createElement('button');
+    d.className = 'carousel-dot'+(i===0?' active':'');
+    d.setAttribute('aria-label','Перейти к скриншоту '+(i+1));
+    d.onclick = ()=>goTo(i);
+    dotsWrap.appendChild(d);
+  });
+  const dots = [...dotsWrap.children];
+
+  function goTo(i){
+    idx = (i+slides.length)%slides.length;
+    track.style.transform = `translateX(-${idx*100}%)`;
+    dots.forEach((d,j)=>d.classList.toggle('active', j===idx));
+    if(meta[idx]){ capTitle.textContent = meta[idx].title; capSub.textContent = meta[idx].sub; }
+  }
+  window.carouselMove = (dir)=>{ goTo(idx+dir); restartAuto(); };
+
+  function restartAuto(){
+    clearInterval(autoTimer);
+    autoTimer = setInterval(()=>goTo(idx+1), 5000);
+  }
+  root.addEventListener('mouseenter', ()=>clearInterval(autoTimer));
+  root.addEventListener('mouseleave', restartAuto);
+
+  // touch swipe
+  let touchX = null;
+  track.addEventListener('touchstart', e=>{ touchX = e.touches[0].clientX; }, {passive:true});
+  track.addEventListener('touchend', e=>{
+    if(touchX===null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if(Math.abs(dx) > 40) carouselMove(dx < 0 ? 1 : -1);
+    touchX = null;
+  });
+
+  goTo(0);
+  restartAuto();
+})();
+</script>
+</body>
+</html>
